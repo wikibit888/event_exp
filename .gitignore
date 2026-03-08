@@ -1,0 +1,10 @@
+experiments/
+tb_logger/
+*inference/
+*.log
+gpu.py
+datasets/
+figures/
+.eggs/
+wandb/
+__pycache__/

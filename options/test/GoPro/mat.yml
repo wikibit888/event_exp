@@ -1,0 +1,66 @@
+# general settings
+name: mat_gopro_test # add 'debug' for quick debug
+model_type: TestImageEventRestorationModel
+scale: 1
+num_gpu:  1 #4
+manual_seed: 10
+
+datasets:
+  test:
+    name: gopro-bestmodel-test
+    type: H5ImageDataset
+
+    # dataroot: ./datasets/GoPro_scer/train
+    dataroot: /home/zhangweiqi/dataset/gopro_scer/test/
+
+    # keep true if use events
+    norm_voxel: true
+    return_voxel: true
+    return_gt_frame: true
+    return_mask: false
+    use_mask: false
+
+    filename_tmpl: '{}'
+    io_backend:
+      type: h5
+
+    crop_size: ~
+    use_flip: false
+    use_rot: false
+
+dataset_name: GoPro
+
+# network structures
+network_g:
+  type: MAT
+  dim: 48
+
+# path
+path:
+  pretrain_network_g: /home/zhangweiqi/EFNet/experiments/mat_original_gridval_train/models/net_g_latest.pth
+  strict_load_g: false
+  resume_state: ~
+  root: /home/zhangweiqi/EFNet/mat_inference/
+
+# validation settings
+val:
+  save_img: true  
+  grids: ~  
+  crop_size: 128 
+
+  metrics:
+    psnr:
+      type: calculate_psnr
+      crop_border: 0
+      test_y_channel: false
+    
+    ssim:
+      type: calculate_ssim
+      crop_border: 0
+      test_y_channel: false   
+
+
+# dist training settings
+dist_params:
+  backend: nccl
+  port: 29500
