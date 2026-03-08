@@ -1,0 +1,140 @@
+# general settings
+name: evmamba_b4g4a2_4e-4_train # add 'debug' for quick debug
+model_type: ImageEventRestorationModel
+scale: 1
+num_gpu:  4 #4
+manual_seed: 10
+
+datasets:
+  train:
+    name: gopro-h5-train
+    type: H5ImageDataset
+
+    # dataroot: ./datasets/GoPro_scer/train
+    dataroot: /home/zhangweiqi/dataset/gopro_scer/train/
+
+    # keep true if use events
+    norm_voxel: true
+    return_voxel: true
+
+    return_mask: false
+    use_mask: false
+
+    filename_tmpl: '{}'
+    io_backend:
+      type: h5
+
+    crop_size: 128
+    use_flip: true
+    use_rot: true
+
+    # data loader settings
+    use_shuffle: true
+    num_worker_per_gpu: 0
+    batch_size_per_gpu: 4 # 4 for 2080, 8 for titan
+    dataset_enlarge_ratio: 2  # accelerate, equals to the num_gpu
+    prefetch_mode: cpu
+    num_prefetch_queue: 1
+
+  val:
+    name: gopro-h5-test
+    type: H5ImageDataset
+
+    # dataroot: ./datasets/test
+    dataroot: /home/zhangweiqi/dataset/gopro_scer/test/ # for debug
+
+    norm_voxel: true  
+    return_voxel: true
+    return_mask: false 
+    use_mask: false
+
+    io_backend:
+      type: h5
+    
+    crop_size: ~
+    use_flip: false
+    use_rot: false
+
+dataset_name: GoPro
+
+# network structures
+network_g:
+   type: EventFFTMamba
+   evt_inp: 6
+   img_inp: 3
+   out_channels: 3
+   dim: 48
+   num_blocks: [4, 4, 8]
+   num_refinement_blocks: 4
+   ssm_ratio: 2.0
+   d_state: 4
+   ffn_expansion_factor: 2
+   scan_len: 8
+   img_size: 128
+
+
+# path
+path:
+  pretrain_network_g: ~
+  strict_load_g: true
+  resume_state: ~
+  training_states: ~ # save current trainig model states, for resume
+
+# training settings
+train:
+  optim_g:
+    type: AdamW
+    lr: !!float 4e-4
+    weight_decay: !!float 1e-4
+    betas: [0.9, 0.99]
+
+  scheduler:
+    type: TrueCosineAnnealingLR
+    T_max: 400000 # 32000 
+    eta_min: !!float 1e-7
+
+  total_iter: 400000 # 320000
+  warmup_iter: -1 # no warm up
+  accumulation_steps: 2
+
+  # losses
+  pixel_opt:
+    type: L1Loss
+    loss_weight: 1.0
+    reduction: mean
+  fft_loss_opt:
+    type: FFTLoss
+    loss_weight: 0.1
+    reduction: mean
+
+# validation settings
+val:
+  val_freq: !!float 8e4 # 4e4
+  save_img: false  
+  grids: true  
+  crop_size: 128 
+
+  metrics:
+    psnr:
+      type: calculate_psnr
+      crop_border: 0
+      test_y_channel: false
+    
+    ssim:
+      type: calculate_ssim
+      crop_border: 0
+      test_y_channel: false   
+
+# logging settings
+logger:
+  print_freq: 200
+  save_checkpoint_freq: !!float 4e4
+  use_tb_logger: true
+  wandb:
+    project: evNEF_training
+    resume_id: ~
+
+# dist training settings
+dist_params:
+  backend: nccl
+  port: 29500
