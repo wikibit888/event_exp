@@ -240,7 +240,8 @@ class NSS_SSM(nn.Module):
         xz = self.in_proj(x)
         x_in, z = xz.chunk(2, dim=-1)                                # (B,H,W,d_inner) each
 
-        x_in = self.act(self.conv2d(x_in.permute(0, 3, 1, 2)))      # (B, d_inner, H, W)
+        x_in = x_in.permute(0, 3, 1, 2).contiguous()
+        x_in = self.act(self.conv2d(x_in))                           # (B, d_inner, H, W)
         y = self._forward_core(x_in, losh_ids)                       # (B, d_inner*4, H, W)
 
         y = y * self.gating(y)
