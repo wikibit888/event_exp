@@ -40,7 +40,7 @@ def parse_options(is_train=True):
         print('Disable distributed.', flush=True)
     else:
         opt['dist'] = True
-        if args.launcher == 'slurm' and 'dist_params' in opt:
+        if 'dist_params' in opt:
             init_dist(args.launcher, **opt['dist_params'])
         else:
             init_dist(args.launcher)

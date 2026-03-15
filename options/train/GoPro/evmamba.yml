@@ -138,3 +138,4 @@ logger:
 dist_params:
   backend: nccl
   port: 29500
+  timeout: 7200

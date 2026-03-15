@@ -46,7 +46,16 @@ class BaseModel():
             use_image (bool): Whether to use saved images to compute metrics (PSNR, SSIM), if not, then use data directly from network' output. Default: True
         """
         if self.opt['dist']:
-            return self.dist_validation(dataloader, current_iter, tb_logger, save_img, rgb2bgr, use_image)
+            # Dist validation is implemented as rank-0-only in several models.
+            # Synchronize before and after it so non-zero ranks do not resume
+            # training and enter the next collective op while rank 0 is still
+            # running validation.
+            if torch.distributed.is_available() and torch.distributed.is_initialized():
+                torch.distributed.barrier()
+            result = self.dist_validation(dataloader, current_iter, tb_logger, save_img, rgb2bgr, use_image)
+            if torch.distributed.is_available() and torch.distributed.is_initialized():
+                torch.distributed.barrier()
+            return result
         else:
             return self.nondist_validation(dataloader, current_iter, tb_logger,
                                     save_img, rgb2bgr, use_image)
