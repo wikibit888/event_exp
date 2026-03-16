@@ -131,23 +131,29 @@ class VisionRotaryEmbedding2d(nn.Module):
 
     def __init__(self, dim, theta=10000):
         super().__init__()
-        freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[:(dim // 2)].float() / dim))
-        self.register_buffer("freqs", freqs)
+        # Store hyperparams only — no register_buffer.
+        # Avoids DDP buffer broadcast deadlock during rank-0-only validation.
+        self.dim = dim
+        self.theta = theta
 
     def forward(self, x):
         """x: (B, C, H, W) -> (B, C, H, W) with 2D RoPE applied."""
         B, C, H, W = x.shape
+        device = x.device
+
+        # Recompute freq base inline (dim//2 scalars, negligible cost)
+        freqs = 1.0 / (self.theta ** (torch.arange(0, self.dim, 2, device=device)[:(self.dim // 2)].float() / self.dim))
 
         # Work in (B, H, W, C) so last dim is channels for rotate_half
         x = x.permute(0, 2, 3, 1)  # (B, H, W, C)
 
         # Position indices for rows and columns
-        t_h = torch.arange(H, device=x.device, dtype=torch.float32)
-        t_w = torch.arange(W, device=x.device, dtype=torch.float32)
+        t_h = torch.arange(H, device=device, dtype=torch.float32)
+        t_w = torch.arange(W, device=device, dtype=torch.float32)
 
         # Per-axis frequencies: outer product of positions and freq bases
-        freqs_h = torch.einsum('i, f -> i f', t_h, self.freqs)  # (H, dim//2)
-        freqs_w = torch.einsum('i, f -> i f', t_w, self.freqs)  # (W, dim//2)
+        freqs_h = torch.einsum('i, f -> i f', t_h, freqs)  # (H, dim//2)
+        freqs_w = torch.einsum('i, f -> i f', t_w, freqs)  # (W, dim//2)
 
         # Repeat for cos/sin pair interleaving
         freqs_h = repeat(freqs_h, '... n -> ... (n r)', r=2)  # (H, dim)
@@ -156,10 +162,7 @@ class VisionRotaryEmbedding2d(nn.Module):
         # 2D grid via broadcat: (H,1,dim) + (1,W,dim) -> (H, W, 2*dim=C)
         freqs = broadcat((freqs_h[:, None, :], freqs_w[None, :, :]), dim=-1)
 
-        freqs_cos = freqs.cos()  # (H, W, C)
-        freqs_sin = freqs.sin()  # (H, W, C)
-
-        x = x * freqs_cos + rotate_half(x) * freqs_sin
+        x = x * freqs.cos() + rotate_half(x) * freqs.sin()
 
         return x.permute(0, 3, 1, 2)  # back to (B, C, H, W)
 

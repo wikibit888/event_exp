@@ -347,6 +347,7 @@ class ImageEventRestorationModel(BaseModel):
     def test(self):
         self.net_g.eval()
         with torch.no_grad():
+            net = self.get_bare_model(self.net_g)  # unwrap DDP to avoid collective ops
             n = self.lq.size(0)  # n: batch size
             outs = []
             m = self.opt['val'].get('max_minibatch', n)  # m is the minibatch, equals to batch size or mini batch size
@@ -359,10 +360,10 @@ class ImageEventRestorationModel(BaseModel):
                     j = n
 
                 if self.opt['datasets']['val'].get('use_mask'):
-                    pred = self.net_g(x = self.lq[i:j, :, :, :], event = self.voxel[i:j, :, :, :], mask = self.mask[i:j, :, :, :])  # mini batch all in 
+                    pred = net(x = self.lq[i:j, :, :, :], event = self.voxel[i:j, :, :, :], mask = self.mask[i:j, :, :, :])  # mini batch all in
                 else:
-                    pred = self.net_g(x = self.lq[i:j, :, :, :], event = self.voxel[i:j, :, :, :])  # mini batch all in 
-            
+                    pred = net(x = self.lq[i:j, :, :, :], event = self.voxel[i:j, :, :, :])  # mini batch all in
+
                 if isinstance(pred, list):
                     pred = pred[-1]
                 outs.append(pred)
