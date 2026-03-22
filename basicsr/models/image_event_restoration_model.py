@@ -351,8 +351,8 @@ class ImageEventRestorationModel(BaseModel):
             n = self.lq.size(0)  # n: batch size
             outs = []
             m = self.opt['val'].get('max_minibatch', n)  # m is the minibatch, equals to batch size or mini batch size
-            print('*' * 20)
-            print(f'crop patch number and actual infer number: {n}, {m}')
+            # print('*' * 20)
+            # print(f'crop patch number and actual infer number: {n}, {m}')
             i = 0
             while i < n:
                 j = i + m

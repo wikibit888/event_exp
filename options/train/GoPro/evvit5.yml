@@ -66,11 +66,12 @@ network_g:
    dim: 48
    num_blocks: [4, 4, 8]
    num_refinement_blocks: 4
-   ffn_expansion_factor: 3
+   num_heads: [1, 2, 4]
+   mlp_ratio: 4.0
+   win_size: 8
+   drop_path_rate: 0.05
    bias: false
-   # ViT-5 enhancements
    qk_norm: true
-   use_rope: true
    rope_theta: 10000
    layer_scale: true
    layer_scale_init: !!float 1e-4
@@ -115,6 +116,7 @@ val:
   save_img: false
   grids: true
   crop_size: 128
+  max_minibatch: 8
 
   metrics:
     psnr:
