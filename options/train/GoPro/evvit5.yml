@@ -1,5 +1,5 @@
 # general settings
-name: evvit5_b4g4a2_4e-4_train # add 'debug' for quick debug
+name: evvit5_scaled_b4g4a2_train # add 'debug' for quick debug
 model_type: ImageEventRestorationModel
 scale: 1
 num_gpu:  4 #4
@@ -63,13 +63,13 @@ network_g:
    evt_inp: 6
    img_inp: 3
    out_channels: 3
-   dim: 48
-   num_blocks: [4, 4, 8]
+   dim: 64                       # 48→64, head_dim aligns to 64 (ViT-5 standard)
+   num_blocks: [6, 6, 12]        # [4,4,8]→[6,6,12], 50% deeper each level
    num_refinement_blocks: 4
-   num_heads: [1, 2, 4]
+   num_heads: [1, 2, 4]          # head_dim=64/64/64 at L1/L2/L3
    mlp_ratio: 4.0
    win_size: 8
-   drop_path_rate: 0.05
+   drop_path_rate: 0.1           # 0.05→0.1, stronger regularization for larger model
    bias: false
    qk_norm: true
    rope_theta: 10000
@@ -87,18 +87,19 @@ path:
 train:
   optim_g:
     type: AdamW
-    lr: !!float 2e-4
-    weight_decay: !!float 1e-4
-    betas: [0.9, 0.99]
+    lr: !!float 3e-4                # 2e-4→3e-4
+    weight_decay: 0.05              # 1e-4→0.05, transformer standard
+    betas: [0.9, 0.95]             # 0.99→0.95, faster adaptation
 
   scheduler:
     type: TrueCosineAnnealingLR
-    T_max: 200000 # total_iter / accumulation_steps
-    eta_min: !!float 1e-7
+    T_max: 200000
+    eta_min: !!float 1e-6           # 1e-7→1e-6, avoid lr floor too low
 
-  total_iter: 400000 # 320000
-  warmup_iter: 5000
+  total_iter: 400000
+  warmup_iter: 10000                # 5000→10000, longer warmup for larger model
   accumulation_steps: 2
+  use_grad_clip: false              # disable hardcoded 0.01 clip (too aggressive for transformers)
 
   # losses
   pixel_opt:
